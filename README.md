@@ -1,2 +1,2 @@
-# Example
-An example greeter plugin
+# Damage Taken Logger
+Logs the damage you've taken to chat.
