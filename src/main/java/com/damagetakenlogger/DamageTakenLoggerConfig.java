@@ -52,4 +52,17 @@ public interface DamageTakenLoggerConfig extends Config
 	{
 		return Color.CYAN;
 	}
+
+	enum ExperienceStyle
+	{
+		TOTAL,
+		PER_SECOND,
+	}
+	@ConfigItem(
+			position = 5,
+			keyName = "ExperienceGainedAmount",
+			name = "XP Amount Style",
+			description = "Determines how the amount of experience should be displayed."
+	)
+	default ExperienceStyle ExperienceGainedAmount() { return ExperienceStyle.TOTAL; }
 }

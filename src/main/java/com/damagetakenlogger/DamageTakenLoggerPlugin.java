@@ -17,6 +17,8 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.util.ColorUtil;
 
 import java.awt.*;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 
 @Slf4j
@@ -44,6 +46,7 @@ public class DamageTakenLoggerPlugin extends Plugin
 
 	private static int combatBeginXp;
 
+	private static Instant combatTimer;
 
 	/**
 	 * Track hits, report when local player actually suffers damage.
@@ -78,6 +81,7 @@ public class DamageTakenLoggerPlugin extends Plugin
 		Actor target = interact.getTarget();
 
 		if (target !=  null) {
+			combatTimer = Instant.now();
 			log.debug(String.format("Combat begins with '%s'", target.getName()));
 			combatBeginXp = calculateTotalCombatXp();
 		}
@@ -93,12 +97,13 @@ public class DamageTakenLoggerPlugin extends Plugin
 	{
 		if (ev.getActor() != combatActor) return;
 
-		int combatAfterXp = calculateTotalCombatXp();
-		log.debug(String.format("Combat finished with '%s'", ev.getActor().getName()));
+		int combatXpGained = this.calculateGainedCombatXp();
+		log.debug(String.format("Combat finished with '%s' for %d XP", ev.getActor().getName(), (int)combatXpGained));
+		String xpOutput = this.getXpOutput(combatXpGained);
 
 		if (config.showDamageTaken()) {
 			String message = ColorUtil.wrapWithColorTag(
-					String.format("You gained %d XP!", combatAfterXp - combatBeginXp),
+					String.format("You gained %s!", xpOutput),
 					config.experienceGainedColor()
 			);
 			this.addGameMessage(message);
@@ -129,5 +134,32 @@ public class DamageTakenLoggerPlugin extends Plugin
 		};
 
 		return Arrays.stream(combatSkills).sum();
+	}
+
+	private int calculateGainedCombatXp()
+	{
+		float combatXpGained = calculateTotalCombatXp() - combatBeginXp;
+		Duration combatDuration = Duration.between(combatTimer, Instant.now());
+
+		switch (config.ExperienceGainedAmount())
+		{
+			case PER_SECOND:
+				return (int) (combatXpGained / combatDuration.getSeconds());
+			default:
+			case TOTAL:
+				return (int) combatXpGained;
+		}
+	}
+
+	private String getXpOutput(int combatXpGained)
+	{
+		switch (config.ExperienceGainedAmount())
+		{
+			case PER_SECOND:
+				return String.format("%d XP/s", combatXpGained);
+			default:
+			case TOTAL:
+				return String.format("%d XP", combatXpGained);
+		}
 	}
 }
