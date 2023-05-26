@@ -16,7 +16,6 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.util.ColorUtil;
 
-import java.awt.*;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
@@ -54,16 +53,23 @@ public class DamageTakenLoggerPlugin extends Plugin
 	@Subscribe
 	public void onHitsplatApplied(HitsplatApplied damage)
 	{
-		if (damage.getActor() != client.getLocalPlayer()) return;
+		if (damage.getActor() != client.getLocalPlayer())
+		{
+			return;
+		}
 
 		int amount = damage.getHitsplat().getAmount();
 
-		if (amount <= 0) return;
+		if (amount <= 0)
+		{
+			return;
+		}
 
-		if (config.showDamageTaken()) {
+		if (config.showDamageTaken())
+		{
 			String message = ColorUtil.wrapWithColorTag(
-					String.format("You were hit for %d!", amount),
-					config.damageTakenColor()
+				String.format("You were hit for %d!", amount),
+				config.damageTakenColor()
 			);
 			this.addGameMessage(message);
 		}
@@ -76,11 +82,15 @@ public class DamageTakenLoggerPlugin extends Plugin
 	@Subscribe
 	public void onInteractingChanged(InteractingChanged interact)
 	{
-		if (interact.getSource() != client.getLocalPlayer()) return;
+		if (interact.getSource() != client.getLocalPlayer())
+		{
+			return;
+		}
 
 		Actor target = interact.getTarget();
 
-		if (target !=  null) {
+		if (target != null)
+		{
 			combatTimer = Instant.now();
 			log.debug(String.format("Combat begins with '%s'", target.getName()));
 			combatBeginXp = calculateTotalCombatXp();
@@ -95,16 +105,20 @@ public class DamageTakenLoggerPlugin extends Plugin
 	@Subscribe
 	public void onActorDeath(ActorDeath ev)
 	{
-		if (ev.getActor() != combatActor) return;
+		if (ev.getActor() != combatActor)
+		{
+			return;
+		}
 
 		int combatXpGained = this.calculateGainedCombatXp();
-		log.debug(String.format("Combat finished with '%s' for %d XP", ev.getActor().getName(), (int)combatXpGained));
-		String xpOutput = this.getXpOutput(combatXpGained);
+		log.debug(String.format("Combat finished with '%s' for %d XP", ev.getActor().getName(), (int) combatXpGained));
 
-		if (config.showDamageTaken()) {
+		if (config.showDamageTaken())
+		{
+			String xpStyle = this.getXpOutputStyle(combatXpGained);
 			String message = ColorUtil.wrapWithColorTag(
-					String.format("You gained %s!", xpOutput),
-					config.experienceGainedColor()
+				String.format("You gained %s!", xpStyle),
+				config.experienceGainedColor()
 			);
 			this.addGameMessage(message);
 		}
@@ -125,23 +139,29 @@ public class DamageTakenLoggerPlugin extends Plugin
 	private int calculateTotalCombatXp()
 	{
 		int[] combatSkills = {
-				client.getSkillExperience(Skill.ATTACK),
-				client.getSkillExperience(Skill.DEFENCE),
-				client.getSkillExperience(Skill.HITPOINTS),
-				client.getSkillExperience(Skill.MAGIC),
-				client.getSkillExperience(Skill.RANGED),
-				client.getSkillExperience(Skill.STRENGTH),
+			client.getSkillExperience(Skill.ATTACK),
+			client.getSkillExperience(Skill.DEFENCE),
+			client.getSkillExperience(Skill.HITPOINTS),
+			client.getSkillExperience(Skill.MAGIC),
+			client.getSkillExperience(Skill.RANGED),
+			client.getSkillExperience(Skill.STRENGTH),
 		};
 
 		return Arrays.stream(combatSkills).sum();
 	}
 
+	/**
+	 * Calculate gained XP based on configured Experience Style.
+	 *
+	 * @return XP rounded down to nearest integer
+	 * @see com.damagetakenlogger.DamageTakenLoggerConfig#ExperienceGainedAmountStyle
+	 */
 	private int calculateGainedCombatXp()
 	{
 		float combatXpGained = calculateTotalCombatXp() - combatBeginXp;
 		Duration combatDuration = Duration.between(combatTimer, Instant.now());
 
-		switch (config.ExperienceGainedAmount())
+		switch (config.ExperienceGainedAmountStyle())
 		{
 			case PER_SECOND:
 				return (int) (combatXpGained / combatDuration.getSeconds());
@@ -151,9 +171,15 @@ public class DamageTakenLoggerPlugin extends Plugin
 		}
 	}
 
-	private String getXpOutput(int combatXpGained)
+	/**
+	 * Returns a formatted string based on configured Experience Style.
+	 *
+	 * @return formatted string
+	 * @see com.damagetakenlogger.DamageTakenLoggerConfig#ExperienceGainedAmountStyle
+	 */
+	private String getXpOutputStyle(int combatXpGained)
 	{
-		switch (config.ExperienceGainedAmount())
+		switch (config.ExperienceGainedAmountStyle())
 		{
 			case PER_SECOND:
 				return String.format("%d XP/s", combatXpGained);

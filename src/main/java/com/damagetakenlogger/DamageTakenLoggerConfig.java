@@ -58,11 +58,15 @@ public interface DamageTakenLoggerConfig extends Config
 		TOTAL,
 		PER_SECOND,
 	}
+
 	@ConfigItem(
-			position = 5,
-			keyName = "ExperienceGainedAmount",
-			name = "XP Amount Style",
-			description = "Determines how the amount of experience should be displayed."
+		keyName = "ExperienceGainedAmountStyle",
+		name = "XP Amount Style",
+		description = "Determines how the amount of experience should be displayed.",
+		position = 50
 	)
-	default ExperienceStyle ExperienceGainedAmount() { return ExperienceStyle.TOTAL; }
+	default ExperienceStyle ExperienceGainedAmountStyle()
+	{
+		return ExperienceStyle.TOTAL;
+	}
 }
