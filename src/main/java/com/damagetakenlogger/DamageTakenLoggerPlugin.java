@@ -32,20 +32,6 @@ public class DamageTakenLoggerPlugin extends Plugin
 	@Inject
 	private DamageTakenLoggerConfig config;
 
-	@Override
-	protected void startUp() throws Exception
-	{
-		log.info("Damage taken logger started!");
-	}
-
-	@Override
-	protected void shutDown() throws Exception
-	{
-		combatActor = null;
-		combatBeginXp = 0;
-		log.info("Damage taken logger stopped!");
-	}
-
 	@Provides
 	DamageTakenLoggerConfig provideConfig(ConfigManager configManager)
 	{
@@ -53,32 +39,31 @@ public class DamageTakenLoggerPlugin extends Plugin
 	}
 
 
-
 	@Nullable
 	private static Actor combatActor;
+
 	private static int combatBeginXp;
 
 
-
+	/**
+	 * Track hits, report when local player actually suffers damage.
+	 */
 	@Subscribe
-	public void onHitsplatApplied(HitsplatApplied hitsplatApplied)
+	public void onHitsplatApplied(HitsplatApplied damage)
 	{
-//		log.debug(String.format("%s was hit for %d",
-//				hitsplatApplied.getActor().getName(),
-//				hitsplatApplied.getHitsplat().getAmount()
-//		));
+		if (damage.getActor() != client.getLocalPlayer()) return;
 
-		if (hitsplatApplied.getActor() != client.getLocalPlayer()) return;
+		int amount = damage.getHitsplat().getAmount();
 
-		int damage = hitsplatApplied.getHitsplat().getAmount();
-		if (damage <= 0) return;
+		if (amount <= 0) return;
 
-		String message = ColorUtil.wrapWithColorTag(
-				String.format("You were hit for %d!", damage),
-				new Color(255, 0, 0)
-		);
-
-		this.addGameMessage(message);
+		if (config.showDamageTaken()) {
+			String message = ColorUtil.wrapWithColorTag(
+					String.format("You were hit for %d!", amount),
+					config.damageTakenColor()
+			);
+			this.addGameMessage(message);
+		}
 	}
 
 	/**
@@ -92,10 +77,8 @@ public class DamageTakenLoggerPlugin extends Plugin
 
 		Actor target = interact.getTarget();
 
-		if (target == null) {
-			log.debug("TODO: HANDLE IT OR REMOVE AS REDUNDANT");
-		} else {
-			log.debug("COMBAT START");
+		if (target !=  null) {
+			log.debug(String.format("Combat begins with '%s'", target.getName()));
 			combatBeginXp = calculateTotalCombatXp();
 		}
 
@@ -108,18 +91,20 @@ public class DamageTakenLoggerPlugin extends Plugin
 	@Subscribe
 	public void onActorDeath(ActorDeath ev)
 	{
-		if (ev.getActor() == combatActor) {
-			int combatAfterXp = calculateTotalCombatXp();
-			log.debug("COMBAT SUCCESSFUL");
+		if (ev.getActor() != combatActor) return;
 
+		int combatAfterXp = calculateTotalCombatXp();
+		log.debug(String.format("Combat finished with '%s'", ev.getActor().getName()));
+
+		if (config.showDamageTaken()) {
 			String message = ColorUtil.wrapWithColorTag(
-					String.format("Gained %d XP!", combatAfterXp - combatBeginXp),
-					new Color(0, 166, 255) // Todo: get from config
+					String.format("You gained %d XP!", combatAfterXp - combatBeginXp),
+					config.experienceGainedColor()
 			);
 			this.addGameMessage(message);
-			combatBeginXp = combatAfterXp; // Just in case.
-			combatActor = null;
 		}
+
+		combatActor = null;
 	}
 
 	private void addGameMessage(String message)
@@ -127,6 +112,11 @@ public class DamageTakenLoggerPlugin extends Plugin
 		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", message, null);
 	}
 
+	/**
+	 * Calculate the sum of all skills that contribute to combat level.
+	 *
+	 * @return total XP
+	 */
 	private int calculateTotalCombatXp()
 	{
 		int[] combatSkills = {
