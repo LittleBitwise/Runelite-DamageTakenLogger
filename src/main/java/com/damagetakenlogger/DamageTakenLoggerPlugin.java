@@ -2,6 +2,7 @@ package com.damagetakenlogger;
 
 import com.google.inject.Provides;
 
+import java.util.Objects;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -88,14 +89,21 @@ public class DamageTakenLoggerPlugin extends Plugin
 		}
 
 		Actor target = interact.getTarget();
-
-		if (target != null)
+		if (target == null)
 		{
-			combatTimer = Instant.now();
-			log.debug(String.format("Combat begins with '%s'", target.getName()));
-			combatBeginXp = calculateTotalCombatXp();
+			return;
 		}
 
+		if (combatActor != null && Objects.equals(combatActor.getName(), target.getName()))
+		{
+			// Prevent XP reset when kiting/eating/burying.
+			log.debug("Attacking similar target, no new combat started.");
+			return;
+		}
+
+		log.debug(String.format("Combat begins with '%s'", target.getName()));
+		combatTimer = Instant.now();
+		combatBeginXp = calculateTotalCombatXp();
 		combatActor = target;
 	}
 
@@ -113,7 +121,7 @@ public class DamageTakenLoggerPlugin extends Plugin
 		int combatXpGained = this.calculateGainedCombatXp();
 		log.debug(String.format("Combat finished with '%s' for %d XP", ev.getActor().getName(), (int) combatXpGained));
 
-		if (config.showDamageTaken())
+		if (config.showExperienceGained())
 		{
 			String xpStyle = this.getXpOutputStyle(combatXpGained);
 			String message = ColorUtil.wrapWithColorTag(
@@ -143,6 +151,7 @@ public class DamageTakenLoggerPlugin extends Plugin
 			client.getSkillExperience(Skill.DEFENCE),
 			client.getSkillExperience(Skill.HITPOINTS),
 			client.getSkillExperience(Skill.MAGIC),
+			client.getSkillExperience(Skill.PRAYER),
 			client.getSkillExperience(Skill.RANGED),
 			client.getSkillExperience(Skill.STRENGTH),
 		};
